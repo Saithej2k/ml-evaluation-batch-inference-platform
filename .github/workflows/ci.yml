@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  test-and-gate:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ml_eval
+          POSTGRES_PASSWORD: ml_eval
+          POSTGRES_DB: ml_eval
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ml_eval -d ml_eval"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 8
+
+    env:
+      APP_ENV: ci
+      LOG_LEVEL: INFO
+      DATABASE_URL: postgresql+psycopg://ml_eval:ml_eval@localhost:5432/ml_eval
+      AUTO_CREATE_TABLES: "false"
+      STORE_PREDICTIONS: "false"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Test
+        run: pytest
+
+      - name: Run evaluation smoke workload
+        run: |
+          mkdir -p artifacts
+          python -m ml_eval_platform.cli init-db
+          python -m ml_eval_platform.cli run-demo --records-per-dataset 25 --output artifacts/evaluation-results.json
+
+      - name: Check release gate
+        run: |
+          python -m ml_eval_platform.cli check-gate \
+            --baseline benchmarks/baseline_metrics.json \
+            --current artifacts/evaluation-results.json \
+            --max-accuracy-drop 0.02 \
+            --max-latency-increase 0.15
+
+      - name: Upload evaluation artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: evaluation-results
+          path: artifacts/evaluation-results.json
+

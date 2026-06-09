@@ -1,0 +1,47 @@
+[
+  {
+    "dataset_name": "product-reviews",
+    "dataset_version": "2024-01",
+    "model_name": "sentiment-classifier",
+    "model_version": "v6",
+    "accuracy": 0.86,
+    "p95_latency_ms": 35.0,
+    "error_rate": 0.01,
+    "failure_count": 0,
+    "record_count": 25
+  },
+  {
+    "dataset_name": "support-tickets",
+    "dataset_version": "2024-02",
+    "model_name": "sentiment-classifier",
+    "model_version": "v6",
+    "accuracy": 0.86,
+    "p95_latency_ms": 35.0,
+    "error_rate": 0.01,
+    "failure_count": 0,
+    "record_count": 25
+  },
+  {
+    "dataset_name": "social-comments",
+    "dataset_version": "2024-03",
+    "model_name": "sentiment-classifier",
+    "model_version": "v6",
+    "accuracy": 0.86,
+    "p95_latency_ms": 35.0,
+    "error_rate": 0.01,
+    "failure_count": 0,
+    "record_count": 25
+  },
+  {
+    "dataset_name": "news-feedback",
+    "dataset_version": "2024-04",
+    "model_name": "sentiment-classifier",
+    "model_version": "v6",
+    "accuracy": 0.86,
+    "p95_latency_ms": 35.0,
+    "error_rate": 0.01,
+    "failure_count": 0,
+    "record_count": 25
+  }
+]
+
