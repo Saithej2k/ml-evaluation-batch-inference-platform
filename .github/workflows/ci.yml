@@ -26,6 +26,7 @@ jobs:
 
     env:
       APP_ENV: ci
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
       LOG_LEVEL: INFO
       DATABASE_URL: postgresql+psycopg://ml_eval:ml_eval@localhost:5432/ml_eval
       AUTO_CREATE_TABLES: "false"
@@ -71,4 +72,3 @@ jobs:
         with:
           name: evaluation-results
           path: artifacts/evaluation-results.json
-
