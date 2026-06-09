@@ -59,7 +59,9 @@ class ModelVersionRead(BaseModel):
     labels: list[str]
     framework: str
     seed: int
-    metadata: dict[str, Any] = Field(alias="metadata_json")
+    metadata: dict[str, Any] = Field(
+        validation_alias="metadata_json", serialization_alias="metadata"
+    )
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
@@ -133,4 +135,3 @@ class ReleaseGateResult(BaseModel):
     accuracy_delta: float
     latency_delta_pct: float
     reasons: list[str]
-

@@ -120,7 +120,9 @@ def evaluate_records(
             "error_rate": run.error_rate,
         },
     )
-    return BatchEvaluationResult(run=run, correct_count=correct_count, successful_count=successful_count)
+    return BatchEvaluationResult(
+        run=run, correct_count=correct_count, successful_count=successful_count
+    )
 
 
 def _predict_with_retry(
@@ -147,7 +149,9 @@ def _validate_records(
 ) -> None:
     dataset_labels = set(dataset_version.labels)
     model_labels = set(model_version.labels)
-    missing_from_dataset = {record.label for record in records if record.label not in dataset_labels}
+    missing_from_dataset = {
+        record.label for record in records if record.label not in dataset_labels
+    }
     missing_from_model = {record.label for record in records if record.label not in model_labels}
     if missing_from_dataset:
         labels = ", ".join(sorted(missing_from_dataset))
@@ -205,4 +209,3 @@ def _failure_log(
         message=str(exc),
         payload={"label": record.label, "text_length": len(record.text)},
     )
-

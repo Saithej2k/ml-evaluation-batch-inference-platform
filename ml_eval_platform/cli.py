@@ -4,23 +4,31 @@ from pathlib import Path
 
 from sqlalchemy.orm import Session
 
+from ml_eval_platform.config import get_settings
 from ml_eval_platform.database import get_session_factory, init_db
+from ml_eval_platform.logging_config import configure_logging
 from ml_eval_platform.services.demo_data import run_demo_batch
 from ml_eval_platform.services.gates import check_metric_rows
 from ml_eval_platform.services.serializers import run_to_metric_row
 
 
 def main() -> None:
+    configure_logging(get_settings().log_level)
+
     parser = argparse.ArgumentParser(description="Manage batch NLP evaluation runs.")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     subparsers.add_parser("init-db", help="Create database tables if they do not exist.")
 
-    demo = subparsers.add_parser("run-demo", help="Run the 4 dataset x 6 model evaluation workload.")
+    demo = subparsers.add_parser(
+        "run-demo", help="Run the 4 dataset x 6 model evaluation workload."
+    )
     demo.add_argument("--records-per-dataset", type=int, default=3_200)
     demo.add_argument("--output", type=Path, default=Path("artifacts/evaluation-results.json"))
 
-    gate = subparsers.add_parser("check-gate", help="Compare current metrics with baseline thresholds.")
+    gate = subparsers.add_parser(
+        "check-gate", help="Compare current metrics with baseline thresholds."
+    )
     gate.add_argument("--baseline", type=Path, required=True)
     gate.add_argument("--current", type=Path, required=True)
     gate.add_argument("--max-accuracy-drop", type=float, default=0.02)
@@ -63,4 +71,3 @@ def _run_demo(session: Session, records_per_dataset: int) -> list[dict[str, obje
 
 if __name__ == "__main__":
     main()
-

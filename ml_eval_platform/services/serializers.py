@@ -39,4 +39,3 @@ def run_to_comparison_row(run: EvaluationRun) -> ComparisonRow:
 def run_to_metric_row(run: EvaluationRun) -> dict[str, object]:
     row = run_to_comparison_row(run)
     return row.model_dump(mode="json")
-

@@ -31,7 +31,9 @@ class DatasetVersion(Base):
     labels: Mapped[list[str]] = mapped_column(JSON, nullable=False)
     size: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     checksum: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, nullable=False
+    )
 
     runs: Mapped[list["EvaluationRun"]] = relationship(back_populates="dataset_version")
 
@@ -47,7 +49,9 @@ class ModelVersion(Base):
     framework: Mapped[str] = mapped_column(String(40), nullable=False, default="pytorch")
     seed: Mapped[int] = mapped_column(Integer, nullable=False, default=13)
     metadata_json: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False, default=dict)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, nullable=False
+    )
 
     runs: Mapped[list["EvaluationRun"]] = relationship(back_populates="model_version")
 
@@ -61,7 +65,9 @@ class EvaluationRun(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     run_id: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
-    dataset_version_id: Mapped[int] = mapped_column(ForeignKey("dataset_versions.id"), nullable=False)
+    dataset_version_id: Mapped[int] = mapped_column(
+        ForeignKey("dataset_versions.id"), nullable=False
+    )
     model_version_id: Mapped[int] = mapped_column(ForeignKey("model_versions.id"), nullable=False)
     status: Mapped[str] = mapped_column(String(40), nullable=False, default="running")
     record_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -70,7 +76,9 @@ class EvaluationRun(Base):
     error_rate: Mapped[float] = mapped_column(Float, nullable=False, default=0)
     failure_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     run_config: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False, default=dict)
-    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, nullable=False
+    )
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     dataset_version: Mapped[DatasetVersion] = relationship(back_populates="runs")
@@ -114,7 +122,8 @@ class FailureLog(Base):
     error_type: Mapped[str] = mapped_column(String(120), nullable=False)
     message: Mapped[str] = mapped_column(Text, nullable=False)
     payload: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False, default=dict)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, nullable=False
+    )
 
     evaluation_run: Mapped[EvaluationRun] = relationship(back_populates="failure_logs")
-

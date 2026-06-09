@@ -12,7 +12,9 @@ class Settings(BaseSettings):
         validation_alias="DATABASE_URL",
     )
     auto_create_tables: bool = Field(default=True, validation_alias="AUTO_CREATE_TABLES")
-    batch_retry_attempts: int = Field(default=3, ge=1, le=8, validation_alias="BATCH_RETRY_ATTEMPTS")
+    batch_retry_attempts: int = Field(
+        default=3, ge=1, le=8, validation_alias="BATCH_RETRY_ATTEMPTS"
+    )
     batch_retry_backoff_seconds: float = Field(
         default=0.05,
         ge=0,
@@ -27,4 +29,3 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
-

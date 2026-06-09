@@ -8,7 +8,6 @@ import torch
 from ml_eval_platform.models import ModelVersion
 from ml_eval_platform.schemas import TextRecord
 
-
 STANDARD_LABELS = ("negative", "neutral", "positive")
 
 POSITIVE_TERMS = {
@@ -161,12 +160,16 @@ class TorchTextClassifier(torch.nn.Module):
             )
             base_bias = torch.tensor([0.0, 0.15, 0.0], dtype=torch.float32)
         else:
-            base_weights = torch.randn((len(self.labels), 9), generator=generator, dtype=torch.float32)
+            base_weights = torch.randn(
+                (len(self.labels), 9), generator=generator, dtype=torch.float32
+            )
             base_bias = torch.zeros(len(self.labels), dtype=torch.float32)
 
         quality = float(self.profile["quality"])
         noise_scale = max(0.02, (1.0 - quality) * 1.8)
-        noise = torch.randn(base_weights.shape, generator=generator, dtype=torch.float32) * noise_scale
+        noise = (
+            torch.randn(base_weights.shape, generator=generator, dtype=torch.float32) * noise_scale
+        )
 
         with torch.no_grad():
             self.linear.weight.copy_(base_weights * quality + noise)
@@ -190,15 +193,24 @@ class TorchTextClassifier(torch.nn.Module):
     def _raise_for_configured_failures(self, record: TextRecord, attempt: int) -> None:
         permanent_rate = float(self.profile["permanent_error_rate"])
         transient_rate = float(self.profile["transient_error_rate"])
-        if _stable_score("permanent", self.model_version.version, record.external_id) < permanent_rate:
+        if (
+            _stable_score("permanent", self.model_version.version, record.external_id)
+            < permanent_rate
+        ):
             raise PermanentInferenceError("model returned a non-retryable inference error")
-        if attempt == 1 and _stable_score("transient", self.model_version.version, record.external_id) < transient_rate:
+        if (
+            attempt == 1
+            and _stable_score("transient", self.model_version.version, record.external_id)
+            < transient_rate
+        ):
             raise TransientInferenceError("transient model-serving timeout")
 
     def _synthetic_latency(self, record: TextRecord) -> float:
         base_latency = float(self.profile["latency_ms"])
         jitter = float(self.profile["latency_jitter_ms"])
-        latency = base_latency + jitter * _stable_score("latency", self.model_version.version, record.external_id)
+        latency = base_latency + jitter * _stable_score(
+            "latency", self.model_version.version, record.external_id
+        )
         return round(latency, 4)
 
 
@@ -244,4 +256,3 @@ def _stable_score(*parts: object) -> float:
     payload = "|".join(str(part) for part in parts).encode("utf-8")
     digest = hashlib.sha256(payload).digest()
     return int.from_bytes(digest[:8], "big") / float(2**64)
-

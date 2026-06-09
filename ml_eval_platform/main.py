@@ -1,3 +1,7 @@
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from typing import Annotated
+
 from fastapi import Depends, FastAPI, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
@@ -25,17 +29,24 @@ from ml_eval_platform.services.serializers import run_to_comparison_row, run_to_
 settings = get_settings()
 configure_logging(settings.log_level)
 
+DbSession = Annotated[Session, Depends(get_db)]
+EvaluationLimit = Annotated[int, Query(ge=1, le=500)]
+DemoRecordsPerDataset = Annotated[int, Query(ge=1, le=10_000)]
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    if settings.auto_create_tables:
+        init_db()
+    yield
+
+
 app = FastAPI(
     title="ML Evaluation and Batch-Inference Platform",
     version="0.1.0",
     description="Batch NLP model evaluation service with metrics, failure logs, and release gates.",
+    lifespan=lifespan,
 )
-
-
-@app.on_event("startup")
-def startup() -> None:
-    if settings.auto_create_tables:
-        init_db()
 
 
 @app.get("/health", tags=["system"])
@@ -49,7 +60,7 @@ def health() -> dict[str, str]:
     status_code=status.HTTP_201_CREATED,
     tags=["catalog"],
 )
-def create_dataset(payload: DatasetVersionCreate, db: Session = Depends(get_db)) -> DatasetVersion:
+def create_dataset(payload: DatasetVersionCreate, db: DbSession) -> DatasetVersion:
     existing = db.scalar(
         select(DatasetVersion).where(
             DatasetVersion.name == payload.name,
@@ -57,7 +68,9 @@ def create_dataset(payload: DatasetVersionCreate, db: Session = Depends(get_db))
         )
     )
     if existing is not None:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="dataset version already exists")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="dataset version already exists"
+        )
     dataset = DatasetVersion(**payload.model_dump())
     db.add(dataset)
     db.commit()
@@ -66,8 +79,10 @@ def create_dataset(payload: DatasetVersionCreate, db: Session = Depends(get_db))
 
 
 @app.get("/datasets", response_model=list[DatasetVersionRead], tags=["catalog"])
-def list_datasets(db: Session = Depends(get_db)) -> list[DatasetVersion]:
-    return list(db.scalars(select(DatasetVersion).order_by(DatasetVersion.name, DatasetVersion.version)))
+def list_datasets(db: DbSession) -> list[DatasetVersion]:
+    return list(
+        db.scalars(select(DatasetVersion).order_by(DatasetVersion.name, DatasetVersion.version))
+    )
 
 
 @app.post(
@@ -76,7 +91,7 @@ def list_datasets(db: Session = Depends(get_db)) -> list[DatasetVersion]:
     status_code=status.HTTP_201_CREATED,
     tags=["catalog"],
 )
-def create_model(payload: ModelVersionCreate, db: Session = Depends(get_db)) -> ModelVersion:
+def create_model(payload: ModelVersionCreate, db: DbSession) -> ModelVersion:
     existing = db.scalar(
         select(ModelVersion).where(
             ModelVersion.name == payload.name,
@@ -84,7 +99,9 @@ def create_model(payload: ModelVersionCreate, db: Session = Depends(get_db)) -> 
         )
     )
     if existing is not None:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="model version already exists")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="model version already exists"
+        )
 
     data = payload.model_dump()
     metadata = data.pop("metadata")
@@ -96,16 +113,18 @@ def create_model(payload: ModelVersionCreate, db: Session = Depends(get_db)) -> 
 
 
 @app.get("/models", response_model=list[ModelVersionRead], tags=["catalog"])
-def list_models(db: Session = Depends(get_db)) -> list[ModelVersion]:
+def list_models(db: DbSession) -> list[ModelVersion]:
     return list(db.scalars(select(ModelVersion).order_by(ModelVersion.name, ModelVersion.version)))
 
 
 @app.post("/evaluations", response_model=EvaluationSummary, tags=["evaluation"])
-def create_evaluation(payload: EvaluationRequest, db: Session = Depends(get_db)) -> EvaluationSummary:
+def create_evaluation(payload: EvaluationRequest, db: DbSession) -> EvaluationSummary:
     dataset = db.get(DatasetVersion, payload.dataset_version_id)
     model = db.get(ModelVersion, payload.model_version_id)
     if dataset is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="dataset version not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="dataset version not found"
+        )
     if model is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="model version not found")
 
@@ -118,14 +137,16 @@ def create_evaluation(payload: EvaluationRequest, db: Session = Depends(get_db))
             run_config=payload.run_config,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
+        ) from exc
     return run_to_summary(result.run)
 
 
 @app.get("/evaluations", response_model=list[EvaluationSummary], tags=["evaluation"])
 def list_evaluations(
-    limit: int = Query(default=50, ge=1, le=500),
-    db: Session = Depends(get_db),
+    db: DbSession,
+    limit: EvaluationLimit = 50,
 ) -> list[EvaluationSummary]:
     statement = (
         select(EvaluationRun)
@@ -138,9 +159,9 @@ def list_evaluations(
 
 @app.get("/evaluations/compare", response_model=list[ComparisonRow], tags=["evaluation"])
 def compare_evaluations(
+    db: DbSession,
     dataset_name: str | None = None,
     dataset_version: str | None = None,
-    db: Session = Depends(get_db),
 ) -> list[ComparisonRow]:
     statement = (
         select(EvaluationRun)
@@ -163,13 +184,13 @@ def compare_evaluations(
 
 
 @app.get("/evaluations/{run_id}", response_model=EvaluationSummary, tags=["evaluation"])
-def get_evaluation(run_id: str, db: Session = Depends(get_db)) -> EvaluationSummary:
+def get_evaluation(run_id: str, db: DbSession) -> EvaluationSummary:
     run = _get_run(db, run_id)
     return run_to_summary(run)
 
 
 @app.post("/release-gates/check", response_model=ReleaseGateResult, tags=["release-gates"])
-def check_release_gate(payload: ReleaseGateRequest, db: Session = Depends(get_db)) -> ReleaseGateResult:
+def check_release_gate(payload: ReleaseGateRequest, db: DbSession) -> ReleaseGateResult:
     baseline = _get_run(db, payload.baseline_run_id)
     candidate = _get_run(db, payload.candidate_run_id)
     outcome = compare_runs(
@@ -190,8 +211,8 @@ def check_release_gate(payload: ReleaseGateRequest, db: Session = Depends(get_db
 
 @app.post("/demo/run", response_model=list[EvaluationSummary], tags=["demo"])
 def run_demo(
-    records_per_dataset: int = Query(default=3_200, ge=1, le=10_000),
-    db: Session = Depends(get_db),
+    db: DbSession,
+    records_per_dataset: DemoRecordsPerDataset = 3_200,
 ) -> list[EvaluationSummary]:
     runs = run_demo_batch(db, records_per_dataset=records_per_dataset)
     return [run_to_summary(run) for run in runs]
@@ -204,5 +225,7 @@ def _get_run(db: Session, run_id: str) -> EvaluationRun:
         .options(joinedload(EvaluationRun.dataset_version), joinedload(EvaluationRun.model_version))
     )
     if run is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="evaluation run not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="evaluation run not found"
+        )
     return run

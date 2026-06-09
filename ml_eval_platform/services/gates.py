@@ -24,7 +24,8 @@ def compare_runs(
 
     if accuracy_delta < -max_accuracy_drop:
         reasons.append(
-            f"accuracy decreased by {abs(accuracy_delta):.2%}, above the {max_accuracy_drop:.2%} limit"
+            "accuracy decreased by "
+            f"{abs(accuracy_delta):.2%}, above the {max_accuracy_drop:.2%} limit"
         )
     if latency_delta_pct > max_latency_increase:
         reasons.append(
@@ -70,7 +71,8 @@ def check_metric_rows(
 
         if accuracy_delta < -max_accuracy_drop:
             reasons.append(
-                f"accuracy decreased by {abs(accuracy_delta):.2%}, above the {max_accuracy_drop:.2%} limit"
+                "accuracy decreased by "
+                f"{abs(accuracy_delta):.2%}, above the {max_accuracy_drop:.2%} limit"
             )
         if latency_delta_pct > max_latency_increase:
             reasons.append(
@@ -106,4 +108,3 @@ def _metric_key(row: dict[str, Any]) -> tuple[str, str, str, str]:
         str(row["model_name"]),
         str(row["model_version"]),
     )
-

@@ -118,7 +118,9 @@ def _upsert_dataset(session: Session, name: str, version: str, size: int) -> Dat
 
 def _upsert_model(session: Session, version: str) -> ModelVersion:
     model = session.scalar(
-        select(ModelVersion).where(ModelVersion.name == DEMO_MODEL_NAME, ModelVersion.version == version)
+        select(ModelVersion).where(
+            ModelVersion.name == DEMO_MODEL_NAME, ModelVersion.version == version
+        )
     )
     profile = DEFAULT_MODEL_PROFILES[version]
     metadata = {
@@ -169,6 +171,7 @@ def _stable_int(*parts: object, modulo: int) -> int:
     return int.from_bytes(digest[:8], "big") % modulo
 
 
-def total_predictions(records_per_dataset: int, datasets: Iterable[object], models: Iterable[object]) -> int:
+def total_predictions(
+    records_per_dataset: int, datasets: Iterable[object], models: Iterable[object]
+) -> int:
     return records_per_dataset * len(tuple(datasets)) * len(tuple(models))
-
